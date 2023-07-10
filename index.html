@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+  <style>
+    body
+    {
+      line-height: 1.5;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    hr
+    {
+      margin: 15px 0px;
+    }
+  </style>
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Video Zoetrope Generator</title>
+  </head>
+
+  <body>
+    <h2>Step 1 (Optional): Load the input video file</h2>
+    Note: HTML does not support loading mkv files, FFmpeg still works and you can still continue but you'll just have to manually fill out the fields in Step 2.
+    <br>
+    Load input video file:
+    <input id="input_upload-file" type="file">
+
+    <h2>Step 2: Fill the inputs</h2>
+    <b>Input</b>
+    <br>
+    The input video is <input id="input_video-length-duration-hours" type="text" size="2" value="0" style="text-align: center"/> hr, <input id="input_video-length-duration-minutes" type="text" size="2" value="30" style="text-align: center"/> min, <input id="input_video-length-duration-seconds" type="text" size="4" value="45" style="text-align: center"/> sec in length.
+    <br>
+    The input video resolution is <input id="input_video-resolution-width" type="text" size="4" value="1920" style="text-align: center"/> × <input id="input_video-resolution-height" type="text" size="4" value="1080" style="text-align: center"/>.
+    <br>
+    The input video file location (full path) is <input id="input_video-file-path" type="text" size="80" value="C:/Users/your-user-name-here/Desktop/update-here.mp4"/>.
+    <br>
+    Each chunk should be <input id="input_chunk-duration" type="text" size="2" value="10" style="text-align: center"/> seconds.
+    <br>
+    The attempted output resolution should be <input id="input_output-resolution-width" type="text" size="4" value="1920" style="text-align: center"/> × <input id="input_output-resolution-height" type="text" size="4" value="1080" style="text-align: center"/>.
+    <br>
+    The FFmpeg bin directory (full path) is <input id="input_ffmpeg-bin-directory-path" type="text" size="80" value="C:/Users/your-user-name-here/Desktop/ffmpeg-n4.4-latest-win64-gpl-4.4/bin"/>.
+    <br>
+    The output directory (full path) is <input id="input_output-directory-path" type="text" size="80" value="C:/Users/your-user-name-here/Desktop/Output"/>.
+    <br>
+    <hr>
+    <b>Calculated</b>
+    <br>
+    <div style="display: inline-block">
+      There are <b><span id="calculated_chunk-amount">123</span></b> chunks.
+      Each chunk is <b><span id="calculated_chunk-resolution">456 × 789</span></b>.
+      It can fit <b><span id="calculated_chunk-amount-width">43</span></b> chunks horizontally, and <b><span id="calculated_chunk-amount-height">21</span></b> chunks vertically.
+    </div>
+    <br>
+    The output file location (full path) is <input id="calculated_output-file-path" type="text" size="80" disabled/>.
+    <br>
+    
+    <h2>Step 3: Save the filtergraph to file</h2>
+    Save the filtergraph text to: <b><span id="filtergraph_file-path" style="border: 1px solid black; padding: 0px 1px;">C:/Users/your-user-name-here/Desktop/Output/filtergraph.txt</span></b>
+    <pre id="filtergraph">
+N/A
+    </pre>
+    
+    <h2>Step 4: Commands to generate</h2>
+    Run the commands in command prompt.
+    <pre id="command">
+N/A
+    </pre>
+  </body>
+
+  <script>
+    window.URL = window.URL || window.webkitURL;
+
+    document.getElementById('input_upload-file').onchange = updateFileInfo;
+    function updateFileInfo() {
+      const files = this.files;
+      
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.src = URL.createObjectURL(files[0]);
+
+      video.onloadedmetadata = function() {
+        window.URL.revokeObjectURL(video.src);
+
+        document.getElementById('input_video-length-duration-hours').value = Math.floor(video.duration / 3600);
+        document.getElementById('input_video-length-duration-minutes').value = Math.floor((video.duration % 3600) / 60);
+        document.getElementById('input_video-length-duration-seconds').value = video.duration % 60;
+        document.getElementById('input_video-resolution-width').value = video.videoWidth;
+        document.getElementById('input_video-resolution-height').value = video.videoHeight;
+
+        updateAll();
+      }
+
+      video.addEventListener('error', function(e) {
+        alert('Invalid video file.');
+      });
+    }
+
+    function updateAll() {
+      updateCalculations();
+      updatePaths();
+      updateCommand();
+    }
+
+    document.getElementById('input_video-length-duration-hours').onchange = updateAll;
+    document.getElementById('input_video-length-duration-minutes').onchange = updateAll;
+    document.getElementById('input_video-length-duration-seconds').onchange = updateAll;
+    document.getElementById('input_video-resolution-width').onchange = updateAll;
+    document.getElementById('input_video-resolution-height').onchange = updateAll;
+    document.getElementById('input_video-file-path').onchange = updateAll;
+    document.getElementById('input_chunk-duration').onchange = updateAll;
+    document.getElementById('input_output-resolution-width').onchange = updateAll;
+    document.getElementById('input_output-resolution-height').onchange = updateAll;
+    document.getElementById('input_ffmpeg-bin-directory-path').onchange = updateAll;
+    document.getElementById('input_output-directory-path').onchange = updateAll;
+
+    function calculateChunkInfo(inputWidth, inputHeight, outputWidth, outputHeight, chunkAmount) {
+      let chunkWidth = outputWidth;
+      while (chunkWidth >= 0) {
+        const chunkHeight = Math.floor((inputHeight / inputWidth) * chunkWidth);
+
+        const widthChunkAmount = Math.ceil(outputWidth / chunkWidth);
+        const heightChunkAmount = Math.ceil(outputHeight / chunkHeight);
+
+        if (chunkWidth * widthChunkAmount <= outputWidth && chunkHeight * heightChunkAmount <= outputHeight) {
+          const calculatedChunkAmount = widthChunkAmount * heightChunkAmount;
+          if (calculatedChunkAmount >= chunkAmount) {
+            return {
+              chunkWidth,
+              chunkHeight,
+              widthChunkAmount,
+              heightChunkAmount,
+            }
+          }
+        }
+        --chunkWidth;
+      }
+      return {
+        chunkWidth: 'N/A',
+        chunkHeight: 'N/A',
+        widthChunkAmount: 'N/A',
+        heightChunkAmount: 'N/A',
+      }
+    }
+
+    function updateCalculations() {
+      const videoDuration_hours = document.getElementById('input_video-length-duration-hours').value
+      const videoDuration_minutes = document.getElementById('input_video-length-duration-minutes').value
+      const videoDuration_seconds = document.getElementById('input_video-length-duration-seconds').value
+      const videoDuration = videoDuration_hours * 3600 + videoDuration_minutes * 60 + videoDuration_seconds * 1;
+
+      const chunkDuration = document.getElementById('input_chunk-duration').value;
+      const chunkAmount = Math.ceil(videoDuration / chunkDuration);
+
+      const inputWidth = document.getElementById('input_video-resolution-width').value;
+      const inputHeight = document.getElementById('input_video-resolution-height').value;
+
+      const outputWidth = document.getElementById('input_output-resolution-width').value;
+      const outputHeight = document.getElementById('input_output-resolution-height').value;
+
+      const chunkInfo = calculateChunkInfo(inputWidth, inputHeight, outputWidth, outputHeight, chunkAmount);
+
+      document.getElementById('calculated_chunk-amount').innerHTML = chunkAmount;
+      document.getElementById('calculated_chunk-resolution').innerHTML = chunkInfo.chunkWidth + ' × ' + chunkInfo.chunkHeight;
+      document.getElementById('calculated_chunk-amount-width').innerHTML = chunkInfo.widthChunkAmount;
+      document.getElementById('calculated_chunk-amount-height').innerHTML = chunkInfo.heightChunkAmount;
+    }
+
+    function getTrimmedOutputDirectoryPath() {
+      let outputDirectoryPath = document.getElementById('input_output-directory-path').value;
+      // Trim last '/' or '\' if it exists
+      if (outputDirectoryPath.slice(-1) === '/' || outputDirectoryPath.slice(-1) === '\\') {
+        outputDirectoryPath = outputDirectoryPath.substring(0, outputDirectoryPath.length - 1);
+      }
+      return outputDirectoryPath;
+    }
+
+    function updatePaths() {
+      const outputDirectoryPath = getTrimmedOutputDirectoryPath();
+      const outputFileName = 'output.mp4';
+      document.getElementById('calculated_output-file-path').value = outputDirectoryPath + '/' + outputFileName;
+    }
+
+    function updateCommand() {
+      const chunkDuration = document.getElementById('input_chunk-duration').value;
+
+      const inputWidth = document.getElementById('input_video-resolution-width').value;
+      const inputHeight = document.getElementById('input_video-resolution-height').value;
+
+      const outputWidth = document.getElementById('input_output-resolution-width').value;
+      const outputHeight = document.getElementById('input_output-resolution-height').value;
+
+      const chunkAmount = document.getElementById('calculated_chunk-amount').innerHTML;
+      
+      const chunkInfo = calculateChunkInfo(inputWidth, inputHeight, outputWidth, outputHeight, chunkAmount);
+
+      const chunkWidth = chunkInfo.chunkWidth;
+      const chunkHeight = chunkInfo.chunkHeight;
+      const widthChunkAmount = chunkInfo.widthChunkAmount;
+      
+      const ffmpegBinDirectoryPath = document.getElementById('input_ffmpeg-bin-directory-path').value;
+
+      const outputDirectoryPath = getTrimmedOutputDirectoryPath();
+
+      const inputFilePath = document.getElementById('input_video-file-path').value;
+      const outputFilePath = document.getElementById('calculated_output-file-path').value;
+
+      const effectiveOutputHeight = Math.ceil(chunkAmount / widthChunkAmount) * chunkHeight;
+
+      const filterComplexSubCommands = [
+        `color=black:${outputWidth}x${effectiveOutputHeight}[output]`,
+      ];
+      for (let i = 0; i < chunkAmount; i++) {
+        const x = i % widthChunkAmount;
+        const y = Math.floor(i / widthChunkAmount);
+        const filterComplexSubCommand = `[0:v]trim=start=${i * chunkDuration}:duration=${chunkDuration},setpts=PTS-STARTPTS,scale=${chunkWidth}:-2[part${i}]; [output][part${i}]overlay=${x * chunkWidth}:${y * chunkHeight}[output]`;
+        filterComplexSubCommands.push(filterComplexSubCommand);
+      }
+      
+      const filtergraphFileName = 'filtergraph.txt';
+      document.getElementById('filtergraph_file-path').innerHTML = `${outputDirectoryPath}/${filtergraphFileName}`;
+      document.getElementById('filtergraph').innerHTML = `${filterComplexSubCommands.join('; ')}`;
+      
+      document.getElementById('command').innerHTML = `
+        cd ${ffmpegBinDirectoryPath}
+        ffmpeg.exe -y ^
+        -i "${inputFilePath}" ^
+        -filter_complex_script ${outputDirectoryPath}/${filtergraphFileName} ^
+        -map [output] ^
+        -t ${chunkDuration} ^
+        "${outputFilePath}"
+      `;
+    }
+
+    updateAll();
+  </script>
+</html>
