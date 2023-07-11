@@ -2,7 +2,7 @@
 The webpage will generate a series of commands of a given video input. The commands then can be used with FFmpeg to generate a video zoetrope.
 
 ![splash](images/splash1.png)
-![splash](images/splash2.webm)
+![splash](images/splash2.gif)
 
 ## Working Demo
 TODO
