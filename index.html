@@ -226,6 +226,7 @@ N/A
         -filter_complex_script ${outputDirectoryPath}/${filtergraphFileName} ^
         -map [output] ^
         -t ${chunkDuration} ^
+        -crf 17 ^
         "${outputFilePath}"
       `;
     }
