@@ -5,7 +5,7 @@ The webpage will generate a series of commands of a given video input. The comma
 ![splash](images/splash2.gif)
 
 ## Working Demo
-TODO
+https://www.youtube.com/watch?v=A5MKzxWJgsc
 
 ## Try It Out
 https://hyssopi.github.io/Video-Zoetrope-Generator/
